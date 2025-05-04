@@ -1,7 +1,6 @@
 
 import { Handle, Position, NodeProps } from "@xyflow/react";
 import { memo } from "react";
-import { Node } from "@xyflow/react";
 
 // Define the interface for our node data
 export interface MindmapNodeData extends Record<string, unknown> {
@@ -14,8 +13,10 @@ export interface MindmapNodeData extends Record<string, unknown> {
 function MindmapNode({ id, data, type }: NodeProps<MindmapNodeData>) {
   // Make sure we handle data safely with proper typing
   const handleClick = () => {
-    if (data && typeof data.onClick === 'function') {
-      data.onClick(id);
+    // Use type assertion to safely access the onClick property
+    const nodeData = data as MindmapNodeData;
+    if (nodeData && typeof nodeData.onClick === 'function') {
+      nodeData.onClick(id);
     }
   };
 
@@ -48,7 +49,7 @@ function MindmapNode({ id, data, type }: NodeProps<MindmapNodeData>) {
           className="opacity-0"
         />
       )}
-      <div className="font-medium">{data?.title || 'Untitled'}</div>
+      <div className="font-medium">{(data as MindmapNodeData)?.title || 'Untitled'}</div>
     </div>
   );
 }
