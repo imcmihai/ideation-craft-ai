@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Lightbulb, Rocket } from "lucide-react";
+import { Lightbulb, Rocket, Sparkles } from "lucide-react";
 
 type InputSidebarProps = {
   onGenerateMindmap: (appIdea: string) => Promise<void>;
@@ -29,6 +29,11 @@ export default function InputSidebar({
       return;
     }
     
+    toast({
+      title: "Generating Mindmap",
+      description: "Using AI to create a comprehensive mindmap for your app idea...",
+    });
+    
     onGenerateMindmap(appIdea);
   };
 
@@ -40,7 +45,7 @@ export default function InputSidebar({
           <h2 className="text-xl font-bold">IdeationCraft AI</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Describe your app idea and I'll create a comprehensive mindmap.
+          Describe your app idea and AI will create a comprehensive mindmap.
         </p>
       </div>
       
@@ -62,12 +67,12 @@ export default function InputSidebar({
           {isGenerating ? (
             <>
               <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-              Generating...
+              Generating AI Mindmap...
             </>
           ) : (
             <>
-              <Rocket className="mr-2 h-4 w-4" />
-              Generate Mindmap
+              <Sparkles className="mr-2 h-4 w-4" />
+              Generate AI Mindmap
             </>
           )}
         </Button>

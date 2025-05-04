@@ -1,12 +1,5 @@
-import OpenAI from "openai";
+import { supabase } from "@/integrations/supabase/client";
 import { MindmapNodeData } from "@/components/MindmapNode";
-
-// This is a placeholder and should be replaced with actual implementation
-// in a real app using environment variables
-const openai = new OpenAI({
-  apiKey: "placeholder-key",
-  dangerouslyAllowBrowser: true, // Only for demo. In production, use API routes
-});
 
 export type MindmapNode = {
   id: string;
@@ -31,21 +24,45 @@ export async function generateMindmap(
   onClickNode: (nodeId: string) => void
 ): Promise<MindmapData> {
   try {
-    // This is a mock implementation for demo purposes
-    // In a real application, you would make an API call to OpenAI
     console.log("Generating mindmap for:", appIdea);
     
-    // For demo, we'll create a simulated response with a delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    return createSampleMindmap(appIdea, onClickNode);
+    // Call the Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke("generate-mindmap", {
+      body: { appIdea },
+    });
+
+    if (error) {
+      console.error("Error from edge function:", error);
+      throw new Error(error.message || "Failed to generate mindmap");
+    }
+
+    if (!data || !data.nodes || !data.edges) {
+      console.error("Invalid response from edge function:", data);
+      throw new Error("Invalid mindmap data received");
+    }
+
+    // Process the response to add click handlers to all nodes
+    const processedNodes = data.nodes.map(node => ({
+      ...node,
+      data: {
+        ...node.data,
+        onClick: onClickNode
+      }
+    }));
+
+    return {
+      nodes: processedNodes,
+      edges: data.edges
+    };
   } catch (error) {
     console.error("Error generating mindmap:", error);
-    throw new Error("Failed to generate mindmap. Please try again.");
+    
+    // If API call fails, fall back to the sample mindmap
+    console.log("Falling back to sample mindmap");
+    return createSampleMindmap(appIdea, onClickNode);
   }
 }
 
-// Function to create a sample mindmap for demo purposes
 function createSampleMindmap(appIdea: string, onClickNode: (nodeId: string) => void): MindmapData {
   // Core node at center
   const nodes: MindmapNode[] = [
