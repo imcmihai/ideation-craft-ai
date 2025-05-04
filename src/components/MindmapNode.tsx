@@ -1,9 +1,9 @@
 
 import { Handle, Position, NodeProps } from "@xyflow/react";
 import { memo } from "react";
+import { Node } from "@xyflow/react";
 
 // Define the interface for our node data
-// Make it extend Record<string, unknown> to satisfy the constraint
 export interface MindmapNodeData extends Record<string, unknown> {
   title: string;
   details?: string;
@@ -11,12 +11,11 @@ export interface MindmapNodeData extends Record<string, unknown> {
 }
 
 // Create a custom node component for the mindmap
-const MindmapNode = ({ id, data, type }: NodeProps<MindmapNodeData>) => {
+function MindmapNode({ id, data, type }: NodeProps<MindmapNodeData>) {
   // Make sure we handle data safely with proper typing
   const handleClick = () => {
-    const nodeData = data as MindmapNodeData;
-    if (nodeData && typeof nodeData.onClick === 'function') {
-      nodeData.onClick(id);
+    if (data && typeof data.onClick === 'function') {
+      data.onClick(id);
     }
   };
 
@@ -49,10 +48,10 @@ const MindmapNode = ({ id, data, type }: NodeProps<MindmapNodeData>) => {
           className="opacity-0"
         />
       )}
-      <div className="font-medium">{(data as MindmapNodeData)?.title || 'Untitled'}</div>
+      <div className="font-medium">{data?.title || 'Untitled'}</div>
     </div>
   );
 }
 
-// Use a type assertion to make TypeScript happy with the node types
-export default memo(MindmapNode);
+// Use type casting to make TypeScript happy with the component types
+export default memo(MindmapNode) as unknown as React.ComponentType;
