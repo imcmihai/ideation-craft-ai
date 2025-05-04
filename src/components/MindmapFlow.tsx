@@ -21,7 +21,7 @@ import "../index.css";
 import MindmapNode, { MindmapNodeData } from "./MindmapNode";
 import { toast } from "@/components/ui/use-toast";
 
-// Define node types with proper type casting
+// Define node types with proper typing
 const nodeTypes: NodeTypes = {
   core: MindmapNode,
   marketing: MindmapNode,
@@ -43,7 +43,8 @@ export default function MindmapFlow({
   initialEdges,
   onNodeClick,
 }: MindmapFlowProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  // Use more generic Node type for state management to avoid type conflicts
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const { fitView } = useReactFlow();
   const [isFirstRender, setIsFirstRender] = useState(true);
