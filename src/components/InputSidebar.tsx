@@ -2,8 +2,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
-import { Lightbulb, Rocket, Sparkles } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Lightbulb, Rocket, Sparkles, ClipboardList } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Separator } from "@/components/ui/separator";
 
 type InputSidebarProps = {
   onGenerateMindmap: (appIdea: string) => Promise<void>;
@@ -47,6 +49,21 @@ export default function InputSidebar({
         <p className="text-sm text-muted-foreground">
           Describe your app idea and AI will create a comprehensive mindmap.
         </p>
+      </div>
+      
+      <div className="mb-6">
+        <Link to="/questionnaire">
+          <Button variant="outline" className="w-full">
+            <ClipboardList className="mr-2 h-4 w-4" />
+            Use Guided Questionnaire
+          </Button>
+        </Link>
+        <div className="relative my-4">
+          <Separator />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="bg-card px-2 text-xs text-muted-foreground">OR</span>
+          </div>
+        </div>
       </div>
       
       <div className="flex-1 mb-4">

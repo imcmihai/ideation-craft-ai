@@ -1,7 +1,8 @@
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { Toaster } from "@/components/ui/toaster";
+import { useLocation } from "react-router-dom";
 
 import InputSidebar from "@/components/InputSidebar";
 import MindmapFlow from "@/components/MindmapFlow";
@@ -9,10 +10,26 @@ import NodeDetails from "@/components/NodeDetails";
 import { generateMindmap, MindmapData } from "@/services/aiService";
 
 export default function Index() {
+  const location = useLocation();
   const [mindmapData, setMindmapData] = useState<MindmapData | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [isNodeDetailsOpen, setIsNodeDetailsOpen] = useState(false);
+
+  // Reference to store current mindmap data
+  const mindmapRef = useRef<MindmapData | null>(null);
+
+  // Handle processing app description from questionnaire when the page loads
+  useEffect(() => {
+    // Check if we have app description from the questionnaire
+    if (location.state?.appDescription) {
+      const appDescription = location.state.appDescription;
+      // Auto-generate mindmap from the questionnaire data
+      handleGenerateMindmap(appDescription);
+      // Clear the state so it doesn't trigger again on re-renders
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Handler for generating mindmap
   const handleGenerateMindmap = async (appIdea: string) => {
@@ -38,9 +55,6 @@ export default function Index() {
       setIsGenerating(false);
     }
   };
-
-  // Reference to store current mindmap data
-  const mindmapRef = useRef<MindmapData | null>(null);
 
   // Handle node click for viewing details
   const handleNodeClick = useCallback((nodeId: string) => {
