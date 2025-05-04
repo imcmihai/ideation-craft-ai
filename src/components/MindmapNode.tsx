@@ -10,7 +10,7 @@ export interface MindmapNodeData extends Record<string, unknown> {
 }
 
 // Create a custom node component for the mindmap
-function MindmapNode({ id, data, type }: NodeProps<MindmapNodeData>) {
+function MindmapNode({ id, data, type }: NodeProps) {
   // Make sure we handle data safely with proper typing
   const handleClick = () => {
     // Use type assertion to safely access the onClick property
@@ -54,5 +54,5 @@ function MindmapNode({ id, data, type }: NodeProps<MindmapNodeData>) {
   );
 }
 
-// Use type casting to make TypeScript happy with the component types
+// Use memo to optimize rendering and appropriate type casting for ReactFlow
 export default memo(MindmapNode) as unknown as React.ComponentType;
