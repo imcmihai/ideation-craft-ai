@@ -1,22 +1,42 @@
-
 import { useState, useCallback, useRef, useEffect } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { Toaster } from "@/components/ui/toaster";
 import { useLocation } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 import InputSidebar from "@/components/InputSidebar";
 import MindmapFlow from "@/components/MindmapFlow";
 import NodeDetails from "@/components/NodeDetails";
-import { generateMindmap, MindmapData } from "@/services/aiService";
+import { generateMindmap, MindmapData, generateDocument } from "@/services/aiService";
+
+// Define type for generated documents
+type GeneratedDoc = {
+  id: string; // e.g., 'prd', 'techspec'
+  title: string;
+  content: string | null; // Store content here
+  status: 'pending' | 'generating' | 'completed' | 'error';
+};
+
+const DOCUMENT_TYPES = [
+  { id: "prd", name: "PRD" },
+  { id: "techspec", name: "Technical Spec" },
+  { id: "userflows", name: "User Flows" },
+  { id: "roadmap", name: "Implementation Roadmap" },
+];
 
 export default function Index() {
   const location = useLocation();
+  const { toast } = useToast();
   const [mindmapData, setMindmapData] = useState<MindmapData | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [isNodeDetailsOpen, setIsNodeDetailsOpen] = useState(false);
   const [appIdea, setAppIdea] = useState<string>("");
   const [detailedAnswers, setDetailedAnswers] = useState<Record<string, string> | null>(null);
+  
+  // State for generated documents
+  const [generatedDocuments, setGeneratedDocuments] = useState<GeneratedDoc[]>([]);
+  const [isGeneratingDocs, setIsGeneratingDocs] = useState(false);
 
   // Reference to store current mindmap data
   const mindmapRef = useRef<MindmapData | null>(null);
@@ -42,28 +62,96 @@ export default function Index() {
   }, [location.state]);
 
   // Handler for generating mindmap
-  const handleGenerateMindmap = async (appIdea: string, answers?: Record<string, string>) => {
+  const handleGenerateMindmap = async (currentAppIdea: string, answers?: Record<string, string>) => {
+    setAppIdea(currentAppIdea);
+    if (answers) {
+      setDetailedAnswers(answers);
+    }
+    setIsGenerating(true);
+    setIsGeneratingDocs(false);
+    setGeneratedDocuments([]);
+    setMindmapData(null);
+    mindmapRef.current = null;
+
     try {
-      setAppIdea(appIdea);
-      setIsGenerating(true);
-      
-      // Callback to handle node clicks
+      // Callback to handle node clicks (for regular nodes)
       const onClickNode = (nodeId: string) => {
-        // Find the node by ID
         const clickedNode = mindmapRef.current?.nodes.find(node => node.id === nodeId);
-        if (clickedNode) {
+        if (clickedNode && !clickedNode.data.isDocumentNode) {
           setSelectedNode(clickedNode);
           setIsNodeDetailsOpen(true);
         }
       };
-      
-      const data = await generateMindmap(appIdea, onClickNode, answers || detailedAnswers);
+
+      // Generate Mindmap structure first (pass false for includeDocumentNodes)
+      const data = await generateMindmap(currentAppIdea, onClickNode, answers || detailedAnswers); 
       setMindmapData(data);
       mindmapRef.current = data;
+      setIsGenerating(false);
+
+      // Now generate documents
+      setIsGeneratingDocs(true); 
+      toast({
+        title: "Generating Supporting Documents",
+        description: "AI is now creating detailed documents (PRD, Tech Spec, etc.)...",
+      });
+
+      const initialDocs: GeneratedDoc[] = DOCUMENT_TYPES.map(doc => ({
+        id: doc.id,
+        title: `Generating ${doc.name}...`,
+        content: null,
+        status: 'pending',
+      }));
+      setGeneratedDocuments(initialDocs);
+
+      const generatedDocs: GeneratedDoc[] = [];
+      for (const docType of DOCUMENT_TYPES) {
+        setGeneratedDocuments(prev => prev.map(doc => 
+          doc.id === docType.id ? { ...doc, status: 'generating' } : doc
+        ));
+        try {
+          toast({
+            title: `Generating ${docType.name}`,
+            description: `AI is working on the ${docType.name}...`
+          });
+          const { content, title } = await generateDocument(docType.id, currentAppIdea, answers || detailedAnswers);
+          generatedDocs.push({ id: docType.id, title, content, status: 'completed' });
+          setGeneratedDocuments(prev => prev.map(doc => 
+            doc.id === docType.id ? { id: docType.id, title, content, status: 'completed' } : doc
+          ));
+          toast({
+            title: `${docType.name} Generated`,
+            description: `Successfully generated ${docType.name}.`,
+          });
+        } catch (docError) {
+          console.error(`Error generating ${docType.name}:`, docError);
+          toast({
+            title: `Failed to Generate ${docType.name}`,
+            description: `An error occurred while generating the ${docType.name}.`,
+            variant: "destructive",
+          });
+           generatedDocs.push({ id: docType.id, title: `${docType.name} Generation Failed`, content: null, status: 'error' });
+          setGeneratedDocuments(prev => prev.map(doc => 
+            doc.id === docType.id ? { ...doc, title: `${docType.name} Generation Failed`, status: 'error' } : doc
+          ));
+        }
+      }
+      
+      toast({
+        title: "Document Generation Complete",
+        description: "All supporting documents have been processed.",
+      });
+
     } catch (error) {
       console.error("Error generating mindmap:", error);
-    } finally {
+      toast({
+        title: "Mindmap Generation Failed",
+        description: "Could not generate the initial mindmap structure.",
+        variant: "destructive",
+      });
       setIsGenerating(false);
+    } finally {
+      setIsGeneratingDocs(false);
     }
   };
 
@@ -86,6 +174,10 @@ export default function Index() {
   const handleClearMindmap = () => {
     setMindmapData(null);
     mindmapRef.current = null;
+    setGeneratedDocuments([]);
+    setIsGeneratingDocs(false);
+    setAppIdea("");
+    setDetailedAnswers(null);
   };
 
   return (
@@ -94,8 +186,10 @@ export default function Index() {
       <div className="w-80 border-r bg-card">
         <InputSidebar 
           onGenerateMindmap={handleGenerateMindmap} 
-          isGenerating={isGenerating}
+          isGenerating={isGenerating || isGeneratingDocs}
           onClear={handleClearMindmap}
+          generatedDocuments={generatedDocuments}
+          isGeneratingDocs={isGeneratingDocs}
         />
       </div>
       
@@ -135,8 +229,6 @@ export default function Index() {
         isOpen={isNodeDetailsOpen} 
         onClose={handleCloseNodeDetails}
         node={selectedNode}
-        appIdea={appIdea}
-        detailedAnswers={detailedAnswers || undefined}
       />
       
       <Toaster />

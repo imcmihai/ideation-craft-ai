@@ -1,4 +1,3 @@
-
 import { useCallback, useState, useRef, useEffect } from "react";
 import {
   ReactFlow,
@@ -81,13 +80,21 @@ export default function MindmapFlow({
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       nodeTypes={nodeTypes}
+      // Define default edge options for styling
+      defaultEdgeOptions={{
+        type: "smoothstep", // Or bezier, step
+        animated: false, // Can set to true for animation
+        style: { 
+          strokeWidth: 2, // Make lines slightly thicker
+          stroke: '#cbd5e1', // Use a lighter neutral gray color (Tailwind slate-300)
+        },
+      }}
       className="mindmap-flow"
       minZoom={0.2}
       maxZoom={1.5}
-      defaultEdgeOptions={{ type: "smoothstep" }}
       fitView
     >
-      <Background color="#aaa" gap={16} />
+      <Background color="#ccc" gap={16} />
       <Controls />
       <Panel position="top-right">
         <button

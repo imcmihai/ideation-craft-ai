@@ -1,22 +1,33 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Lightbulb, Rocket, Sparkles, ClipboardList } from "lucide-react";
+import { Lightbulb, Rocket, Sparkles, ClipboardList, Download, FileText, Loader2, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
+
+// Define type for generated documents (matching Index.tsx)
+type GeneratedDoc = {
+  id: string;
+  title: string;
+  content: string | null;
+  status: 'pending' | 'generating' | 'completed' | 'error';
+};
 
 type InputSidebarProps = {
   onGenerateMindmap: (appIdea: string) => Promise<void>;
   isGenerating: boolean;
   onClear: () => void;
+  generatedDocuments: GeneratedDoc[];
+  isGeneratingDocs: boolean;
 };
 
 export default function InputSidebar({ 
   onGenerateMindmap, 
   isGenerating, 
-  onClear 
+  onClear,
+  generatedDocuments,
+  isGeneratingDocs
 }: InputSidebarProps) {
   const [appIdea, setAppIdea] = useState("");
   const { toast } = useToast();
@@ -37,6 +48,27 @@ export default function InputSidebar({
     });
     
     onGenerateMindmap(appIdea);
+  };
+
+  // Function to handle download
+  const handleDownloadMarkdown = (doc: GeneratedDoc) => {
+    if (!doc.content || doc.status !== 'completed') return;
+    
+    const fileName = `${doc.title.replace(/\s+/g, '-').toLowerCase()}.md`;
+    const blob = new Blob([doc.content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Download started",
+      description: `Downloading ${fileName}`,
+    });
   };
 
   return (
@@ -103,6 +135,45 @@ export default function InputSidebar({
           Clear
         </Button>
       </div>
+
+      {/* Section for Generated Documents */}
+      {(generatedDocuments.length > 0 || isGeneratingDocs) && (
+        <div className="mt-6 pt-4 border-t">
+          <h3 className="text-lg font-semibold mb-3 flex items-center">
+            <FileText className="h-5 w-5 mr-2 text-primary" />
+            Generated Documents
+          </h3>
+          <div className="space-y-2">
+            {generatedDocuments.map((doc) => (
+              <div key={doc.id} className="flex items-center justify-between p-2 border rounded-md">
+                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                  {doc.status === 'generating' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  {doc.status === 'error' && <AlertCircle className="h-4 w-4 text-destructive" />}
+                  {doc.status === 'completed' && <FileText className="h-4 w-4 text-green-600" />}
+                  {doc.status === 'pending' && <FileText className="h-4 w-4 text-muted-foreground" />}
+                  <span className="text-sm truncate" title={doc.title}>{doc.title}</span>
+                </div>
+                {doc.status === 'completed' && doc.content && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleDownloadMarkdown(doc)}
+                    title={`Download ${doc.title}`}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                )}
+                 {(doc.status === 'generating' || doc.status === 'pending') && (
+                   <span className="text-xs text-muted-foreground italic mr-2">Generating...</span>
+                 )}
+                 {doc.status === 'error' && (
+                   <span className="text-xs text-destructive italic mr-2">Failed</span>
+                 )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
