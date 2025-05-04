@@ -44,7 +44,12 @@ export default function Questionnaire() {
         `Core Features: ${updatedFormData.coreFeatures || "N/A"}\n`;
       
       // Navigate back to home with the data for mindmap generation
-      navigate("/", { state: { appDescription } });
+      navigate("/", { 
+        state: { 
+          appDescription,
+          detailedAnswers: updatedFormData 
+        }
+      });
     } else {
       // Move to the next section
       setCurrentSection(currentSection + 1);

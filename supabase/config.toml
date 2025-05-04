@@ -3,3 +3,6 @@ project_id = "qkvrfhhotgnqfygldhxa"
 
 [functions.generate-mindmap]
 verify_jwt = false
+
+[functions.generate-document]
+verify_jwt = false

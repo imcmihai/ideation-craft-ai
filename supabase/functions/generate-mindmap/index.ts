@@ -15,13 +15,67 @@ serve(async (req) => {
   }
 
   try {
-    const { appIdea } = await req.json();
+    const { appIdea, detailedAnswers } = await req.json();
     
     if (!appIdea) {
       throw new Error("App idea is required");
     }
 
     console.log("Generating mindmap for app idea:", appIdea);
+    if (detailedAnswers) {
+      console.log("Using detailed answers for enhanced mindmap");
+    }
+
+    // Prepare system prompt - enhance if detailed answers are provided
+    let systemPrompt = `You are an app development expert that helps create comprehensive mindmaps for app ideas.
+    The mindmap should have a core node with the app idea, and branches for: 
+    - Marketing Strategy
+    - Development Roadmap
+    - Market Research
+    - Promotion & Growth
+    - Financial Planning
+    
+    Each branch should have 3-5 sub-categories with detailed descriptions.`;
+    
+    // Add document generation nodes if we have detailed answers
+    if (detailedAnswers) {
+      systemPrompt += `
+      Also include the following document generation nodes as sub-categories under Development Roadmap:
+      - "Generate PRD" (Product Requirements Document)
+      - "Generate Technical Spec"
+      - "Generate User Flows"
+      - "Generate Implementation Roadmap"
+      
+      These nodes should have details explaining what documents can be generated.`;
+    }
+    
+    systemPrompt += `
+    Format your response as JSON with this structure:
+    {
+      "nodes": [
+        {
+          "id": "core-1",
+          "type": "core",
+          "title": "App Idea Name",
+          "details": "Description of the app idea"
+        },
+        {
+          "id": "marketing",
+          "type": "marketing",
+          "title": "Marketing Strategy",
+          "details": "Marketing strategy details"
+        },
+        // other main categories
+        {
+          "id": "marketing-1", 
+          "type": "sub-category",
+          "parentId": "marketing",
+          "title": "Sub-category Title",
+          "details": "Detailed explanation with bullet points"
+        }
+        // other sub-categories
+      ]
+    }`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -34,46 +88,13 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an app development expert that helps create comprehensive mindmaps for app ideas.
-            The mindmap should have a core node with the app idea, and branches for: 
-            - Marketing Strategy
-            - Development Roadmap
-            - Market Research
-            - Promotion & Growth
-            - Financial Planning
-            
-            Each branch should have 3-5 sub-categories with detailed descriptions.
-            Format your response as JSON with this structure:
-            {
-              "nodes": [
-                {
-                  "id": "core-1",
-                  "type": "core",
-                  "title": "App Idea Name",
-                  "details": "Description of the app idea"
-                },
-                {
-                  "id": "marketing",
-                  "type": "marketing",
-                  "title": "Marketing Strategy",
-                  "details": "Marketing strategy details"
-                },
-                // other main categories
-                {
-                  "id": "marketing-1", 
-                  "type": "sub-category",
-                  "parentId": "marketing",
-                  "title": "Sub-category Title",
-                  "details": "Detailed explanation with bullet points"
-                }
-                // other sub-categories
-              ]
-            }
-            `
+            content: systemPrompt
           },
           {
             role: 'user',
-            content: `Create a comprehensive mindmap for this app idea: "${appIdea}"`
+            content: detailedAnswers 
+              ? `Create a comprehensive mindmap for this app idea: "${appIdea}" using these detailed answers: ${JSON.stringify(detailedAnswers)}`
+              : `Create a comprehensive mindmap for this app idea: "${appIdea}"`
           }
         ],
         temperature: 0.7,
@@ -151,7 +172,9 @@ function processOpenAIMindmap(aiData, appIdea) {
       data: {
         title: category.title,
         details: category.details,
-        onClick: () => {}
+        onClick: () => {},
+        // Flag special document nodes
+        isDocumentNode: false
       }
     });
     
@@ -181,6 +204,22 @@ function processOpenAIMindmap(aiData, appIdea) {
     // Calculate position based on parent and sibling index
     const yOffset = (siblingIndex - (siblings.length - 1) / 2) * 60;
     
+    // Check if this is a document generation node
+    const isDocumentNode = subCategory.title && 
+      (subCategory.title.includes("Generate PRD") || 
+       subCategory.title.includes("Generate Technical Spec") ||
+       subCategory.title.includes("Generate User Flows") ||
+       subCategory.title.includes("Generate Implementation Roadmap"));
+    
+    // Determine document type
+    let documentType = null;
+    if (isDocumentNode) {
+      if (subCategory.title.includes("PRD")) documentType = "prd";
+      else if (subCategory.title.includes("Technical Spec")) documentType = "techspec";
+      else if (subCategory.title.includes("User Flows")) documentType = "userflows";
+      else if (subCategory.title.includes("Implementation Roadmap")) documentType = "roadmap";
+    }
+    
     nodes.push({
       id: subCategory.id,
       type: "sub-category",
@@ -191,7 +230,9 @@ function processOpenAIMindmap(aiData, appIdea) {
       data: {
         title: subCategory.title,
         details: subCategory.details,
-        onClick: () => {}
+        onClick: () => {},
+        isDocumentNode: isDocumentNode,
+        documentType: documentType
       }
     });
     

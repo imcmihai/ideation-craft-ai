@@ -15,6 +15,8 @@ export default function Index() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [isNodeDetailsOpen, setIsNodeDetailsOpen] = useState(false);
+  const [appIdea, setAppIdea] = useState<string>("");
+  const [detailedAnswers, setDetailedAnswers] = useState<Record<string, string> | null>(null);
 
   // Reference to store current mindmap data
   const mindmapRef = useRef<MindmapData | null>(null);
@@ -24,16 +26,25 @@ export default function Index() {
     // Check if we have app description from the questionnaire
     if (location.state?.appDescription) {
       const appDescription = location.state.appDescription;
+      const answers = location.state.detailedAnswers;
+      
+      // Store the app idea and detailed answers
+      setAppIdea(appDescription);
+      if (answers) {
+        setDetailedAnswers(answers);
+      }
+      
       // Auto-generate mindmap from the questionnaire data
-      handleGenerateMindmap(appDescription);
+      handleGenerateMindmap(appDescription, answers);
       // Clear the state so it doesn't trigger again on re-renders
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
   // Handler for generating mindmap
-  const handleGenerateMindmap = async (appIdea: string) => {
+  const handleGenerateMindmap = async (appIdea: string, answers?: Record<string, string>) => {
     try {
+      setAppIdea(appIdea);
       setIsGenerating(true);
       
       // Callback to handle node clicks
@@ -46,7 +57,7 @@ export default function Index() {
         }
       };
       
-      const data = await generateMindmap(appIdea, onClickNode);
+      const data = await generateMindmap(appIdea, onClickNode, answers || detailedAnswers);
       setMindmapData(data);
       mindmapRef.current = data;
     } catch (error) {
@@ -124,6 +135,8 @@ export default function Index() {
         isOpen={isNodeDetailsOpen} 
         onClose={handleCloseNodeDetails}
         node={selectedNode}
+        appIdea={appIdea}
+        detailedAnswers={detailedAnswers || undefined}
       />
       
       <Toaster />

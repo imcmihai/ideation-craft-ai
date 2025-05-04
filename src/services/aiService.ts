@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { MindmapNodeData } from "@/components/MindmapNode";
 
@@ -5,7 +6,10 @@ export type MindmapNode = {
   id: string;
   type: string;
   position: { x: number; y: number };
-  data: MindmapNodeData;
+  data: MindmapNodeData & {
+    isDocumentNode?: boolean;
+    documentType?: string;
+  };
 };
 
 export type MindmapEdge = {
@@ -21,14 +25,18 @@ export type MindmapData = {
 
 export async function generateMindmap(
   appIdea: string,
-  onClickNode: (nodeId: string) => void
+  onClickNode: (nodeId: string) => void,
+  detailedAnswers?: Record<string, string>
 ): Promise<MindmapData> {
   try {
     console.log("Generating mindmap for:", appIdea);
     
     // Call the Supabase Edge Function
     const { data, error } = await supabase.functions.invoke("generate-mindmap", {
-      body: { appIdea },
+      body: { 
+        appIdea,
+        detailedAnswers: detailedAnswers || null 
+      },
     });
 
     if (error) {
@@ -59,11 +67,53 @@ export async function generateMindmap(
     
     // If API call fails, fall back to the sample mindmap
     console.log("Falling back to sample mindmap");
-    return createSampleMindmap(appIdea, onClickNode);
+    return createSampleMindmap(appIdea, onClickNode, !!detailedAnswers);
   }
 }
 
-function createSampleMindmap(appIdea: string, onClickNode: (nodeId: string) => void): MindmapData {
+export async function generateDocument(
+  documentType: string,
+  appIdea: string,
+  detailedAnswers?: Record<string, string>
+): Promise<{ content: string, title: string }> {
+  try {
+    console.log(`Generating ${documentType} for:`, appIdea);
+    
+    // Call the Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke("generate-document", {
+      body: { 
+        documentType,
+        appIdea,
+        detailedAnswers: detailedAnswers || null 
+      },
+    });
+
+    if (error) {
+      console.error("Error from edge function:", error);
+      throw new Error(error.message || `Failed to generate ${documentType}`);
+    }
+
+    if (!data || !data.content) {
+      console.error("Invalid response from edge function:", data);
+      throw new Error(`Invalid ${documentType} data received`);
+    }
+
+    return {
+      content: data.content,
+      title: data.title || `Generated ${documentType.toUpperCase()}`
+    };
+  } catch (error) {
+    console.error(`Error generating ${documentType}:`, error);
+    throw error;
+  }
+}
+
+// Helper function to create a sample mindmap when API fails
+function createSampleMindmap(
+  appIdea: string, 
+  onClickNode: (nodeId: string) => void,
+  includeDocumentNodes: boolean = false
+): MindmapData {
   // Core node at center
   const nodes: MindmapNode[] = [
     {
@@ -102,7 +152,7 @@ function createSampleMindmap(appIdea: string, onClickNode: (nodeId: string) => v
   });
 
   // Add sub-nodes for each category
-  const subNodes = generateSubNodes(categories, onClickNode);
+  const subNodes = generateSubNodes(categories, onClickNode, includeDocumentNodes);
   nodes.push(...subNodes.nodes);
 
   // Create edges
@@ -120,17 +170,22 @@ function createSampleMindmap(appIdea: string, onClickNode: (nodeId: string) => v
 
 function generateSubNodes(
   categories: { id: string; title: string; y: number }[],
-  onClickNode: (nodeId: string) => void
+  onClickNode: (nodeId: string) => void,
+  includeDocumentNodes: boolean = false
 ) {
   const nodes: MindmapNode[] = [];
   const edges: MindmapEdge[] = [];
   
   categories.forEach((category) => {
-    const subCategories = getSubCategories(category.id);
+    const subCategories = getSubCategories(category.id, includeDocumentNodes);
     
     subCategories.forEach((subCat, index) => {
       const nodeId = `${category.id}-${index + 1}`;
       const yOffset = (index - (subCategories.length - 1) / 2) * 60;
+      
+      // Determine if this is a document node
+      const isDocumentNode = subCat.isDocumentNode || false;
+      const documentType = subCat.documentType || null;
       
       // Add sub-category node
       nodes.push({
@@ -141,6 +196,8 @@ function generateSubNodes(
           title: subCat.title,
           details: subCat.details,
           onClick: onClickNode,
+          isDocumentNode: isDocumentNode,
+          documentType: documentType
         },
       });
       
@@ -156,7 +213,45 @@ function generateSubNodes(
   return { nodes, edges };
 }
 
-function getSubCategories(categoryId: string) {
+function getSubCategories(categoryId: string, includeDocumentNodes: boolean = false) {
+  // Special case for development category when document nodes are requested
+  if (categoryId === "development" && includeDocumentNodes) {
+    return [
+      { 
+        title: "Technical Stack Selection", 
+        details: "Choose the appropriate technologies and frameworks for building your application.\n\n• Evaluate whether to build native, hybrid, or web app based on your needs\n• Select frontend and backend technologies based on team expertise\n• Consider scalability requirements from the start\n• Evaluate third-party services and APIs to accelerate development\n\nHack: Consider using a low-code platform like Flutter or React Native to build once for both iOS and Android if appropriate for your app." 
+      },
+      { 
+        title: "MVP Feature Definition", 
+        details: "Define the minimum viable product features that deliver core value with minimum development effort.\n\n• Identify the core problem your app solves\n• List all possible features, then ruthlessly prioritize\n• Focus on the 20% of features that deliver 80% of value\n• Create user stories and acceptance criteria\n\nHack: Use the MoSCoW method (Must have, Should have, Could have, Won't have) to prioritize features effectively." 
+      },
+      { 
+        title: "Generate PRD", 
+        details: "Create a detailed Product Requirements Document that outlines all aspects of your application including requirements, features, user stories, and acceptance criteria.\n\nClick this node to generate a comprehensive PRD based on your app idea information.",
+        isDocumentNode: true,
+        documentType: "prd"
+      },
+      { 
+        title: "Generate Technical Spec", 
+        details: "Generate a technical specification document outlining architecture, tech stack, data models, APIs, and implementation considerations.\n\nClick this node to generate a technical specification based on your app idea information.",
+        isDocumentNode: true,
+        documentType: "techspec"
+      },
+      { 
+        title: "Generate User Flows", 
+        details: "Create detailed user flow descriptions that map out the step-by-step journeys users will take through your application.\n\nClick this node to generate user flow documentation based on your app idea information.",
+        isDocumentNode: true,
+        documentType: "userflows"
+      },
+      { 
+        title: "Generate Implementation Roadmap", 
+        details: "Develop a comprehensive roadmap for implementing your app from project setup through development and deployment.\n\nClick this node to generate an implementation roadmap based on your app idea information.",
+        isDocumentNode: true,
+        documentType: "roadmap"
+      },
+    ];
+  }
+  
   switch (categoryId) {
     case "marketing":
       return [
