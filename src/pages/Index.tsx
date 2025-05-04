@@ -9,6 +9,12 @@ import MindmapFlow from "@/components/MindmapFlow";
 import NodeDetails from "@/components/NodeDetails";
 import { generateMindmap, MindmapData, generateDocument } from "@/services/aiService";
 
+// Define localStorage keys
+const LS_APP_IDEA_KEY = 'ideationcraft_appIdea';
+const LS_DETAILED_ANSWERS_KEY = 'ideationcraft_detailedAnswers';
+const LS_MINDMAP_DATA_KEY = 'ideationcraft_mindmapData';
+const LS_GENERATED_DOCS_KEY = 'ideationcraft_generatedDocuments';
+
 // Define type for generated documents
 type GeneratedDoc = {
   id: string; // e.g., 'prd', 'techspec'
@@ -27,19 +33,87 @@ const DOCUMENT_TYPES = [
 export default function Index() {
   const location = useLocation();
   const { toast } = useToast();
-  const [mindmapData, setMindmapData] = useState<MindmapData | null>(null);
+  
+  // --- State Initialization with localStorage Fallback ---
+  const [appIdea, setAppIdea] = useState<string>(() => {
+    return localStorage.getItem(LS_APP_IDEA_KEY) || "";
+  });
+
+  const [detailedAnswers, setDetailedAnswers] = useState<Record<string, string> | null>(() => {
+    const saved = localStorage.getItem(LS_DETAILED_ANSWERS_KEY);
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error("Failed to parse detailedAnswers from localStorage", e);
+      localStorage.removeItem(LS_DETAILED_ANSWERS_KEY); // Clear invalid data
+      return null;
+    }
+  });
+  
+  const [mindmapData, setMindmapData] = useState<MindmapData | null>(() => {
+    const saved = localStorage.getItem(LS_MINDMAP_DATA_KEY);
+    try {
+      // Note: onClick handlers are not persisted, but handleNodeClick finds the node in state
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error("Failed to parse mindmapData from localStorage", e);
+      localStorage.removeItem(LS_MINDMAP_DATA_KEY); // Clear invalid data
+      return null;
+    }
+  });
+
+  const [generatedDocuments, setGeneratedDocuments] = useState<GeneratedDoc[]>(() => {
+    const saved = localStorage.getItem(LS_GENERATED_DOCS_KEY);
+    try {
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to parse generatedDocuments from localStorage", e);
+      localStorage.removeItem(LS_GENERATED_DOCS_KEY); // Clear invalid data
+      return [];
+    }
+  });
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [isNodeDetailsOpen, setIsNodeDetailsOpen] = useState(false);
-  const [appIdea, setAppIdea] = useState<string>("");
-  const [detailedAnswers, setDetailedAnswers] = useState<Record<string, string> | null>(null);
-  
-  // State for generated documents
-  const [generatedDocuments, setGeneratedDocuments] = useState<GeneratedDoc[]>([]);
   const [isGeneratingDocs, setIsGeneratingDocs] = useState(false);
 
-  // Reference to store current mindmap data
-  const mindmapRef = useRef<MindmapData | null>(null);
+  // --- End State Initialization ---
+
+  // Reference to store current mindmap data (still useful for click handler)
+  const mindmapRef = useRef<MindmapData | null>(mindmapData); // Initialize ref with loaded data
+
+  // --- useEffect Hooks for Saving to localStorage ---
+  useEffect(() => {
+    localStorage.setItem(LS_APP_IDEA_KEY, appIdea);
+  }, [appIdea]);
+
+  useEffect(() => {
+    if (detailedAnswers) {
+      localStorage.setItem(LS_DETAILED_ANSWERS_KEY, JSON.stringify(detailedAnswers));
+    } else {
+      localStorage.removeItem(LS_DETAILED_ANSWERS_KEY);
+    }
+  }, [detailedAnswers]);
+
+  useEffect(() => {
+    if (mindmapData) {
+      localStorage.setItem(LS_MINDMAP_DATA_KEY, JSON.stringify(mindmapData));
+      mindmapRef.current = mindmapData; // Keep ref updated
+    } else {
+      localStorage.removeItem(LS_MINDMAP_DATA_KEY);
+      mindmapRef.current = null;
+    }
+  }, [mindmapData]);
+
+  useEffect(() => {
+    if (generatedDocuments.length > 0) {
+      localStorage.setItem(LS_GENERATED_DOCS_KEY, JSON.stringify(generatedDocuments));
+    } else {
+      localStorage.removeItem(LS_GENERATED_DOCS_KEY);
+    }
+  }, [generatedDocuments]);
+  // --- End useEffect Hooks ---
 
   // Handle processing app description from questionnaire when the page loads
   useEffect(() => {
@@ -172,12 +246,21 @@ export default function Index() {
 
   // Handle clearing the mindmap
   const handleClearMindmap = () => {
-    setMindmapData(null);
-    mindmapRef.current = null;
-    setGeneratedDocuments([]);
-    setIsGeneratingDocs(false);
+    // Clear state
     setAppIdea("");
     setDetailedAnswers(null);
+    setMindmapData(null);
+    setGeneratedDocuments([]);
+    setIsGeneratingDocs(false);
+    mindmapRef.current = null;
+    
+    // Clear localStorage
+    localStorage.removeItem(LS_APP_IDEA_KEY);
+    localStorage.removeItem(LS_DETAILED_ANSWERS_KEY);
+    localStorage.removeItem(LS_MINDMAP_DATA_KEY);
+    localStorage.removeItem(LS_GENERATED_DOCS_KEY);
+    
+    toast({ title: "Cleared", description: "Mindmap and documents cleared." });
   };
 
   return (
