@@ -21,22 +21,15 @@ import "../index.css";
 import MindmapNode from "./MindmapNode";
 import { toast } from "@/components/ui/use-toast";
 
-// Define custom node data interface
-interface MindmapNodeData {
-  title: string;
-  details?: string;
-  onClick: (nodeId: string) => void;
-}
-
-// Define node types with proper type casting to avoid type errors
+// Define node types with proper type casting
 const nodeTypes: ReactFlowNodeTypes = {
-  core: MindmapNode as any,
-  marketing: MindmapNode as any,
-  development: MindmapNode as any,
-  promotion: MindmapNode as any,
-  research: MindmapNode as any,
-  finance: MindmapNode as any,
-  "sub-category": MindmapNode as any,
+  core: MindmapNode,
+  marketing: MindmapNode,
+  development: MindmapNode,
+  promotion: MindmapNode,
+  research: MindmapNode,
+  finance: MindmapNode,
+  "sub-category": MindmapNode,
 };
 
 type MindmapFlowProps = {

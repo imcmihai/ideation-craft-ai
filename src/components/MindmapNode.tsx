@@ -1,16 +1,16 @@
 
-import { Handle, Position, NodeProps } from "@xyflow/react";
+import { Handle, Position, NodeProps as ReactFlowNodeProps } from "@xyflow/react";
 import { memo } from "react";
 
-// Define a properly typed interface for our node data
-interface NodeData {
+// Define the interface for our node data
+interface MindmapNodeData {
   title: string;
   details?: string;
   onClick: (nodeId: string) => void;
 }
 
-// Now use NodeProps with our NodeData generic parameter
-function MindmapNode({ id, data, type }: NodeProps<NodeData>) {
+// Use the ReactFlowNodeProps with our custom data type
+function MindmapNode({ id, data, type }: ReactFlowNodeProps) {
   // Make sure we handle data safely
   const handleClick = () => {
     if (data && typeof data.onClick === 'function') {
