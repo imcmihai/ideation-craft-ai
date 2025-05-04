@@ -9,16 +9,19 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
+  NodeTypes,
 } from "@xyflow/react";
 
 // Import the required CSS files
 import "@xyflow/react/dist/style.css";
-import "src/index.css";
+// Use relative path for CSS import
+import "../index.css";
 
 import MindmapNode from "./MindmapNode";
 import { toast } from "@/components/ui/use-toast";
 
-const nodeTypes = {
+// Define node types with appropriate TypeScript types
+const nodeTypes: NodeTypes = {
   core: MindmapNode,
   marketing: MindmapNode,
   development: MindmapNode,

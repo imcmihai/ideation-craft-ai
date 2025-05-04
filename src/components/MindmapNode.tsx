@@ -2,17 +2,25 @@
 import { Handle, Position, NodeProps } from "@xyflow/react";
 import { memo } from "react";
 
-type NodeData = {
+// Define a properly typed interface for node data
+interface NodeData {
   title: string;
   details?: string;
   onClick: (nodeId: string) => void;
-};
+}
 
 function MindmapNode({ id, data, type }: NodeProps<NodeData>) {
+  // Make sure we handle data safely
+  const handleClick = () => {
+    if (data && typeof data.onClick === 'function') {
+      data.onClick(id);
+    }
+  };
+
   return (
     <div 
       className="px-4 py-2 rounded-md min-h-[50px] flex items-center justify-center cursor-pointer hover:shadow-lg transition-shadow"
-      onClick={() => data.onClick(id)}
+      onClick={handleClick}
     >
       {type === 'core' && (
         <Handle
@@ -38,7 +46,7 @@ function MindmapNode({ id, data, type }: NodeProps<NodeData>) {
           className="opacity-0"
         />
       )}
-      <div className="font-medium">{data.title}</div>
+      <div className="font-medium">{data?.title || 'Untitled'}</div>
     </div>
   );
 }
