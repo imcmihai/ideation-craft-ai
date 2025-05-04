@@ -11,8 +11,9 @@ import {
   addEdge,
 } from "@xyflow/react";
 
-import "src/index.css";
+// Import the required CSS files
 import "@xyflow/react/dist/style.css";
+import "src/index.css";
 
 import MindmapNode from "./MindmapNode";
 import { toast } from "@/components/ui/use-toast";
