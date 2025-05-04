@@ -2,7 +2,7 @@
 import { Handle, Position, NodeProps } from "@xyflow/react";
 import { memo } from "react";
 
-// Define a properly typed interface for node data
+// Define a properly typed interface for node data that can be used with React Flow
 interface NodeData {
   title: string;
   details?: string;

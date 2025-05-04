@@ -9,7 +9,8 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
-  NodeTypes,
+  Node,
+  NodeTypes as ReactFlowNodeTypes,
 } from "@xyflow/react";
 
 // Import the required CSS files
@@ -20,15 +21,22 @@ import "../index.css";
 import MindmapNode from "./MindmapNode";
 import { toast } from "@/components/ui/use-toast";
 
-// Define node types with appropriate TypeScript types
-const nodeTypes: NodeTypes = {
-  core: MindmapNode,
-  marketing: MindmapNode,
-  development: MindmapNode,
-  promotion: MindmapNode,
-  research: MindmapNode,
-  finance: MindmapNode,
-  "sub-category": MindmapNode,
+// Define custom node data interface
+interface MindmapNodeData {
+  title: string;
+  details?: string;
+  onClick: (nodeId: string) => void;
+}
+
+// Define node types with proper type casting to avoid type errors
+const nodeTypes: ReactFlowNodeTypes = {
+  core: MindmapNode as any,
+  marketing: MindmapNode as any,
+  development: MindmapNode as any,
+  promotion: MindmapNode as any,
+  research: MindmapNode as any,
+  finance: MindmapNode as any,
+  "sub-category": MindmapNode as any,
 };
 
 type MindmapFlowProps = {
