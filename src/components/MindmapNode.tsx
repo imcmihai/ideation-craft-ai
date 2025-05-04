@@ -3,7 +3,7 @@ import { Handle, Position, NodeProps } from "@xyflow/react";
 import { memo } from "react";
 
 // Define the interface for our node data
-interface MindmapNodeData {
+export interface MindmapNodeData {
   title: string;
   details?: string;
   onClick: (nodeId: string) => void;

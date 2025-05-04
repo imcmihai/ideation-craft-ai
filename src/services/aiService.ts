@@ -1,5 +1,5 @@
-
 import OpenAI from "openai";
+import { MindmapNodeData } from "@/components/MindmapNode";
 
 // This is a placeholder and should be replaced with actual implementation
 // in a real app using environment variables
@@ -12,11 +12,7 @@ export type MindmapNode = {
   id: string;
   type: string;
   position: { x: number; y: number };
-  data: {
-    title: string;
-    details: string;
-    onClick: (nodeId: string) => void;
-  };
+  data: MindmapNodeData;
 };
 
 export type MindmapEdge = {

@@ -10,7 +10,7 @@ import {
   useEdgesState,
   addEdge,
   Node,
-  NodeTypes as ReactFlowNodeTypes,
+  NodeTypes,
 } from "@xyflow/react";
 
 // Import the required CSS files
@@ -18,11 +18,11 @@ import "@xyflow/react/dist/style.css";
 // Use relative path for CSS import
 import "../index.css";
 
-import MindmapNode from "./MindmapNode";
+import MindmapNode, { MindmapNodeData } from "./MindmapNode";
 import { toast } from "@/components/ui/use-toast";
 
 // Define node types with proper type casting
-const nodeTypes: ReactFlowNodeTypes = {
+const nodeTypes: NodeTypes = {
   core: MindmapNode,
   marketing: MindmapNode,
   development: MindmapNode,
@@ -33,7 +33,7 @@ const nodeTypes: ReactFlowNodeTypes = {
 };
 
 type MindmapFlowProps = {
-  initialNodes: any[];
+  initialNodes: Node<MindmapNodeData>[];
   initialEdges: any[];
   onNodeClick: (nodeId: string) => void;
 };
