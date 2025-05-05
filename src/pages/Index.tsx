@@ -135,20 +135,20 @@ export default function Index() {
     }
   }, [location.state]);
 
-  // Handler for generating mindmap
+  // Handler for generating mindmap ONLY
   const handleGenerateMindmap = async (currentAppIdea: string, answers?: Record<string, string>) => {
     setAppIdea(currentAppIdea);
     if (answers) {
       setDetailedAnswers(answers);
     }
-    setIsGenerating(true);
-    setIsGeneratingDocs(false);
-    setGeneratedDocuments([]);
+    setIsGenerating(true); // Start mindmap generation loading
+    setIsGeneratingDocs(false); // Ensure doc generation is reset
+    setGeneratedDocuments([]); // Clear previous documents on new mindmap generation
+    localStorage.removeItem(LS_GENERATED_DOCS_KEY); // Also clear from storage
     setMindmapData(null);
     mindmapRef.current = null;
 
     try {
-      // Callback to handle node clicks (for regular nodes)
       const onClickNode = (nodeId: string) => {
         const clickedNode = mindmapRef.current?.nodes.find(node => node.id === nodeId);
         if (clickedNode && !clickedNode.data.isDocumentNode) {
@@ -157,76 +157,96 @@ export default function Index() {
         }
       };
 
-      // Generate Mindmap structure first (pass false for includeDocumentNodes)
-      const data = await generateMindmap(currentAppIdea, onClickNode, answers || detailedAnswers); 
+      // Generate Mindmap structure only
+      const data = await generateMindmap(currentAppIdea, onClickNode, answers || detailedAnswers);
       setMindmapData(data);
       mindmapRef.current = data;
-      setIsGenerating(false);
-
-      // Now generate documents
-      setIsGeneratingDocs(true); 
-      toast({
-        title: "Generating Supporting Documents",
-        description: "AI is now creating detailed documents (PRD, Tech Spec, etc.)...",
-      });
-
-      const initialDocs: GeneratedDoc[] = DOCUMENT_TYPES.map(doc => ({
-        id: doc.id,
-        title: `Generating ${doc.name}...`,
-        content: null,
-        status: 'pending',
-      }));
-      setGeneratedDocuments(initialDocs);
-
-      const generatedDocs: GeneratedDoc[] = [];
-      for (const docType of DOCUMENT_TYPES) {
-        setGeneratedDocuments(prev => prev.map(doc => 
-          doc.id === docType.id ? { ...doc, status: 'generating' } : doc
-        ));
-        try {
-          toast({
-            title: `Generating ${docType.name}`,
-            description: `AI is working on the ${docType.name}...`
-          });
-          const { content, title } = await generateDocument(docType.id, currentAppIdea, answers || detailedAnswers);
-          generatedDocs.push({ id: docType.id, title, content, status: 'completed' });
-          setGeneratedDocuments(prev => prev.map(doc => 
-            doc.id === docType.id ? { id: docType.id, title, content, status: 'completed' } : doc
-          ));
-          toast({
-            title: `${docType.name} Generated`,
-            description: `Successfully generated ${docType.name}.`,
-          });
-        } catch (docError) {
-          console.error(`Error generating ${docType.name}:`, docError);
-          toast({
-            title: `Failed to Generate ${docType.name}`,
-            description: `An error occurred while generating the ${docType.name}.`,
-            variant: "destructive",
-          });
-           generatedDocs.push({ id: docType.id, title: `${docType.name} Generation Failed`, content: null, status: 'error' });
-          setGeneratedDocuments(prev => prev.map(doc => 
-            doc.id === docType.id ? { ...doc, title: `${docType.name} Generation Failed`, status: 'error' } : doc
-          ));
-        }
-      }
-      
-      toast({
-        title: "Document Generation Complete",
-        description: "All supporting documents have been processed.",
-      });
-
+      // REMOVED: Automatic document generation loop
     } catch (error) {
       console.error("Error generating mindmap:", error);
       toast({
         title: "Mindmap Generation Failed",
-        description: "Could not generate the initial mindmap structure.",
+        description: (error as Error).message || "Could not generate the initial mindmap structure.",
         variant: "destructive",
       });
-      setIsGenerating(false);
     } finally {
-      setIsGeneratingDocs(false);
+      setIsGenerating(false); // Stop mindmap generation loading
     }
+  };
+
+  // NEW Handler for generating all documents MANUALLY
+  const handleGenerateAllDocuments = async () => {
+    if (!appIdea) {
+      toast({ title: "Error", description: "App idea is missing.", variant: "destructive" });
+      return;
+    }
+    if (isGenerating || isGeneratingDocs) return; // Prevent concurrent runs
+    
+    setIsGeneratingDocs(true);
+    setGeneratedDocuments([]); // Clear any previous docs before starting new generation
+    toast({
+      title: "Generating Supporting Documents",
+      description: "AI is now creating detailed documents (PRD, Tech Spec, etc.)...",
+    });
+
+    const initialDocs: GeneratedDoc[] = DOCUMENT_TYPES.map(doc => ({
+      id: doc.id,
+      title: `Generating ${doc.name}...`,
+      content: null,
+      status: 'pending',
+    }));
+    setGeneratedDocuments(initialDocs);
+
+    const finalDocs: GeneratedDoc[] = []; // Use a final array to avoid partial saves if needed
+    for (const docType of DOCUMENT_TYPES) {
+      // Update status for the specific doc being generated
+      setGeneratedDocuments(prev => prev.map(doc => 
+        doc.id === docType.id ? { ...doc, status: 'generating', title: `Generating ${docType.name}...` } : doc
+      ));
+      try {
+        toast({
+          title: `Generating ${docType.name}`,
+          description: `AI is working on the ${docType.name}...`
+        });
+        const { content, title } = await generateDocument(docType.id, appIdea, detailedAnswers);
+        const completedDoc = { id: docType.id, title, content, status: 'completed' as const };
+        finalDocs.push(completedDoc);
+        // Update state immediately for this completed doc
+        setGeneratedDocuments(prev => prev.map(doc => 
+          doc.id === docType.id ? completedDoc : doc
+        ));
+        toast({
+          title: `${docType.name} Generated`,
+          description: `Successfully generated ${docType.name}.`,
+        });
+      } catch (docError) {
+        console.error(`Error generating ${docType.name}:`, docError);
+        const errorDoc = { 
+          id: docType.id, 
+          title: `${docType.name} - Generation Failed`, 
+          content: null, 
+          status: 'error' as const 
+        };
+        finalDocs.push(errorDoc);
+        toast({
+          title: `Failed to Generate ${docType.name}`,
+          description: (docError as Error).message || `An error occurred while generating the ${docType.name}.`,
+          variant: "destructive",
+        });
+        // Update state immediately for this failed doc
+         setGeneratedDocuments(prev => prev.map(doc => 
+           doc.id === docType.id ? errorDoc : doc
+         ));
+      }
+    }
+    // Optional: Final state update if needed, though inline updates are better for UI feedback
+    // setGeneratedDocuments(finalDocs);
+    
+    toast({
+      title: "Document Generation Complete",
+      description: "All supporting documents have been processed.",
+    });
+    setIsGeneratingDocs(false); // Stop document generation loading
   };
 
   // Handle node click for viewing details
@@ -244,7 +264,7 @@ export default function Index() {
     setIsNodeDetailsOpen(false);
   };
 
-  // Handle clearing the mindmap
+  // Handle clearing the mindmap and documents
   const handleClearMindmap = () => {
     // Clear state
     setAppIdea("");
@@ -266,13 +286,16 @@ export default function Index() {
   return (
     <div className="flex h-screen w-full overflow-hidden">
       {/* Sidebar */}
-      <div className="w-80 border-r bg-card">
+      <div className="w-80 border-r bg-card flex flex-col"> {/* Use flex-col */} 
         <InputSidebar 
           onGenerateMindmap={handleGenerateMindmap} 
-          isGenerating={isGenerating || isGeneratingDocs}
+          isGenerating={isGenerating || isGeneratingDocs} // isGenerating now covers both mindmap and doc generation phases
           onClear={handleClearMindmap}
+          // Pass down needed state and the new handler
+          appIdea={appIdea} // Pass appIdea to control button state
           generatedDocuments={generatedDocuments}
-          isGeneratingDocs={isGeneratingDocs}
+          isGeneratingDocs={isGeneratingDocs} 
+          onGenerateDocuments={handleGenerateAllDocuments} // Pass the new handler
         />
       </div>
       

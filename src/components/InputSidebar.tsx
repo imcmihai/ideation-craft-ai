@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,8 @@ type InputSidebarProps = {
   onClear: () => void;
   generatedDocuments: GeneratedDoc[];
   isGeneratingDocs: boolean;
+  appIdea: string;
+  onGenerateDocuments: () => Promise<void>;
 };
 
 export default function InputSidebar({ 
@@ -27,13 +29,19 @@ export default function InputSidebar({
   isGenerating, 
   onClear,
   generatedDocuments,
-  isGeneratingDocs
+  isGeneratingDocs,
+  appIdea,
+  onGenerateDocuments
 }: InputSidebarProps) {
-  const [appIdea, setAppIdea] = useState("");
+  const [localAppIdea, setLocalAppIdea] = useState(appIdea || "");
   const { toast } = useToast();
 
+  useEffect(() => {
+    setLocalAppIdea(appIdea);
+  }, [appIdea]);
+
   const handleGenerate = () => {
-    if (!appIdea.trim()) {
+    if (!localAppIdea.trim()) {
       toast({
         title: "Empty Input",
         description: "Please describe your app idea first.",
@@ -47,7 +55,7 @@ export default function InputSidebar({
       description: "Using AI to create a comprehensive mindmap for your app idea...",
     });
     
-    onGenerateMindmap(appIdea);
+    onGenerateMindmap(localAppIdea);
   };
 
   // Function to handle download
@@ -72,7 +80,7 @@ export default function InputSidebar({
   };
 
   return (
-    <div className="flex flex-col p-4 h-full border-r">
+    <div className="flex flex-col p-4 h-full border-r overflow-y-auto">
       <div className="mb-6 text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
           <Lightbulb className="h-6 w-6 text-primary" />
@@ -102,8 +110,8 @@ export default function InputSidebar({
         <Textarea
           placeholder="Describe your app idea in detail. For example: A mobile app that helps people track their daily water intake and reminds them to stay hydrated throughout the day."
           className="min-h-[200px] text-base"
-          value={appIdea}
-          onChange={(e) => setAppIdea(e.target.value)}
+          value={localAppIdea}
+          onChange={(e) => setLocalAppIdea(e.target.value)}
         />
       </div>
       
@@ -134,18 +142,43 @@ export default function InputSidebar({
         >
           Clear
         </Button>
+        
+        <Button 
+          onClick={onGenerateDocuments} 
+          className="w-full" 
+          disabled={!appIdea || isGenerating || isGeneratingDocs}
+          variant="secondary"
+        >
+          {isGeneratingDocs ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Generating Documents...
+            </>
+          ) : (
+            <>
+              <FileText className="mr-2 h-4 w-4" />
+              Generate Supporting Docs
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Section for Generated Documents */}
       {(generatedDocuments.length > 0 || isGeneratingDocs) && (
-        <div className="mt-6 pt-4 border-t">
+        <div className="mt-6 pt-4 border-t flex-shrink-0">
           <h3 className="text-lg font-semibold mb-3 flex items-center">
             <FileText className="h-5 w-5 mr-2 text-primary" />
             Generated Documents
           </h3>
           <div className="space-y-2">
+            {isGeneratingDocs && generatedDocuments.length === 0 && (
+              <div className="flex items-center justify-center text-muted-foreground py-4">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <span>Starting generation...</span>
+              </div>
+            )}
             {generatedDocuments.map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between p-2 border rounded-md">
+              <div key={doc.id} className="flex items-center justify-between p-2 border rounded-md bg-card">
                 <div className="flex items-center space-x-2 flex-1 min-w-0">
                   {doc.status === 'generating' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                   {doc.status === 'error' && <AlertCircle className="h-4 w-4 text-destructive" />}
