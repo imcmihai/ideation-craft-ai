@@ -17,7 +17,10 @@ type NodeDetailsProps = {
     id: string;
     data: {
       title: string;
-      details: string;
+      details?: string;
+      guidance?: string;
+      cursorPrompt?: string | null;
+      stepIndex?: number;
     };
     type: string;
   } | null;
@@ -64,9 +67,18 @@ export default function NodeDetails({
         
         <div className="space-y-4">
           <DialogDescription className="text-foreground whitespace-pre-line">
-            {node.data.details}
+            {node.type === 'step' ? node.data.guidance : node.data.details}
           </DialogDescription>
               
+          {node.type === 'step' && node.data.cursorPrompt && (
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-semibold mb-2 text-mindmap-development">Cursor AI Prompt:</h3>
+              <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto whitespace-pre-wrap break-words font-mono"><code>
+                {node.data.cursorPrompt}
+              </code></pre>
+            </div>
+          )}
+
           <div className="flex justify-end border-t pt-4">
             <Button variant="outline" onClick={onClose}>
               Close

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { ReactFlowProvider } from "@xyflow/react";
+import { ReactFlowProvider, Node } from "@xyflow/react";
 import { Toaster } from "@/components/ui/toaster";
 import { useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +8,7 @@ import InputSidebar from "@/components/InputSidebar";
 import MindmapFlow from "@/components/MindmapFlow";
 import NodeDetails from "@/components/NodeDetails";
 import { generateMindmap, MindmapData, generateDocument } from "@/services/aiService";
+import { MindmapNodeData } from "@/components/MindmapNode";
 
 // Define localStorage keys
 const LS_APP_IDEA_KEY = 'ideationcraft_appIdea';
@@ -250,14 +251,15 @@ export default function Index() {
   };
 
   // Handle node click for viewing details
-  const handleNodeClick = useCallback((nodeId: string) => {
-    // Find the node by ID
-    const node = mindmapData?.nodes.find(n => n.id === nodeId);
-    if (node) {
-      setSelectedNode(node);
+  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node<MindmapNodeData>) => {
+    // Check if the clicked node has details or guidance to show
+    if (node && node.data && (node.data.details || node.data.guidance)) { 
+      setSelectedNode(node); // Set the full node object
       setIsNodeDetailsOpen(true);
     }
-  }, [mindmapData]);
+    // Optionally add logic here for nodes that *shouldn't* open the dialog
+    // else { console.log("Clicked node type has no details to show:", node.type); }
+  }, []); // Removed mindmapData dependency as node is passed directly
 
   // Handle closing node details
   const handleCloseNodeDetails = () => {
